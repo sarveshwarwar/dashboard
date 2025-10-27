@@ -87,4 +87,4 @@ else:
     st.info("👆 Upload a CSV file to begin your analysis.")
 
 st.markdown("---")
-st.caption("Built with ❤️ using Streamlit, Pandas, and Plotly.")
+
