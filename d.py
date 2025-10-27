@@ -65,4 +65,71 @@ if uploaded_file is not None:
 
     # ------------------- Descriptive Statistics -------------------
     if show_summary:
-        st.subheader("📈 D
+        st.subheader("📈 Descriptive Statistics")
+        st.write(filtered_df.describe(include='all').T)
+
+    # ------------------- Outlier Detection -------------------
+    if show_outliers:
+        st.subheader("⚠️ Outlier Detection")
+        numeric_cols = filtered_df.select_dtypes(include=['int64', 'float64']).columns
+        outlier_info = {}
+        for col in numeric_cols:
+            Q1 = filtered_df[col].quantile(0.25)
+            Q3 = filtered_df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            outliers = filtered_df[(filtered_df[col] < Q1 - 1.5*IQR) | (filtered_df[col] > Q3 + 1.5*IQR)]
+            outlier_info[col] = outliers.shape[0]
+        st.write(pd.DataFrame.from_dict(outlier_info, orient='index', columns=['Outliers Count']))
+
+    # ------------------- Automatic Insights -------------------
+    if show_insights:
+        st.subheader("💡 Automatic Insights")
+        for col in filtered_df.columns:
+            if filtered_df[col].dtype in ['int64', 'float64']:
+                st.write(f"Column **{col}**: Mean = {filtered_df[col].mean():.2f}, Median = {filtered_df[col].median():.2f}, Std = {filtered_df[col].std():.2f}")
+            else:
+                st.write(f"Column **{col}**: Top values = {filtered_df[col].value_counts().head(3).to_dict()}")
+
+    # ------------------- Visualizations -------------------
+    if show_visuals:
+        st.subheader("📊 Visualizations")
+        categorical_cols = filtered_df.select_dtypes(include=['object']).columns
+
+        if len(numeric_cols) > 0:
+            col_hist = st.selectbox("Select numeric column for histogram", numeric_cols)
+            fig_hist = px.histogram(filtered_df, x=col_hist, nbins=30, title=f"Distribution of {col_hist}")
+            st.plotly_chart(fig_hist, use_container_width=True)
+
+        if len(numeric_cols) >= 2:
+            x_axis = st.selectbox("Select X-axis for scatter plot", numeric_cols)
+            y_axis = st.selectbox("Select Y-axis for scatter plot", numeric_cols, index=1)
+            fig_scatter = px.scatter(filtered_df, x=x_axis, y=y_axis, title=f"{x_axis} vs {y_axis}")
+            st.plotly_chart(fig_scatter, use_container_width=True)
+
+        if len(categorical_cols) > 0 and len(numeric_cols) > 0:
+            cat_col = st.selectbox("Select categorical column for box plot", categorical_cols)
+            num_col = st.selectbox("Select numeric column for box plot", numeric_cols)
+            fig_box = px.box(filtered_df, x=cat_col, y=num_col, title=f"{num_col} by {cat_col}", color=cat_col)
+            st.plotly_chart(fig_box, use_container_width=True)
+
+    # ------------------- Correlation Heatmap -------------------
+    if show_correlation and len(numeric_cols) > 1:
+        st.subheader("🔗 Correlation Heatmap")
+        corr = filtered_df[numeric_cols].corr()
+        fig_corr = ff.create_annotated_heatmap(
+            z=corr.values,
+            x=list(corr.columns),
+            y=list(corr.index),
+            colorscale='Viridis',
+            showscale=True
+        )
+        st.plotly_chart(fig_corr, use_container_width=True)
+
+    # ------------------- Download Option -------------------
+    if show_download:
+        st.subheader("📥 Download Filtered Data")
+        csv = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button("Download CSV", csv, file_name="filtered_data.csv", mime="text/csv")
+
+else:
+    st.sidebar.info("👆 Upload a CSV file to begin your analysis.")
