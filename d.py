@@ -1,135 +1,101 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.figure_factory as ff
-import numpy as np
 
-# ------------------- Streamlit Page Setup -------------------
-st.set_page_config(page_title="Interactive Data Analysis Dashboard", layout="wide")
-st.title("📊 Interactive Data Analysis Dashboard")
-st.write("Upload a CSV file to automatically explore, summarize, and visualize your dataset.")
-st.markdown("---")
+# ---------------------------
+# 🎨 Page Configuration
+# ---------------------------
+st.set_page_config(page_title="Interactive Data Visualization Dashboard", layout="wide")
+st.title("📊 Interactive Data Visualization Dashboard")
+st.markdown("Upload your dataset (CSV) and explore interactive visualizations!")
 
-# ------------------- Sidebar -------------------
-st.sidebar.title("⚙️ Dashboard Controls")
-uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
-
-show_overview = st.sidebar.checkbox("Show Dataset Overview", value=True)
-show_summary = st.sidebar.checkbox("Show Descriptive Statistics", value=True)
-show_visuals = st.sidebar.checkbox("Show Visualizations", value=True)
-show_correlation = st.sidebar.checkbox("Show Correlation Heatmap", value=True)
-show_outliers = st.sidebar.checkbox("Highlight Outliers", value=True)
-show_insights = st.sidebar.checkbox("Generate Automatic Insights", value=True)
-show_download = st.sidebar.checkbox("Show Download Option", value=True)
+# ---------------------------
+# 📂 File Upload
+# ---------------------------
+uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
 if uploaded_file is not None:
+    # Read the dataset
     df = pd.read_csv(uploaded_file)
     st.success("✅ File uploaded successfully!")
+    
+    # Display dataframe preview
+    st.subheader("📄 Dataset Preview")
+    st.dataframe(df.head())
 
-    # ------------------- Dataset Overview -------------------
-    if show_overview:
-        st.subheader("📄 Dataset Preview")
-        st.dataframe(df.head())
+    # ---------------------------
+    # 🧮 Data Overview
+    # ---------------------------
+    st.subheader("📊 Dataset Summary")
+    col1, col2 = st.columns(2)
 
-        st.subheader("📊 Dataset Overview")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Rows", df.shape[0])
-        col2.metric("Columns", df.shape[1])
-        col3.metric("Missing Values", df.isnull().sum().sum())
+    with col1:
+        st.markdown("**Shape of Dataset:**")
+        st.write(df.shape)
+        st.markdown("**Data Types:**")
+        st.write(df.dtypes)
 
-        info_df = pd.DataFrame({
-            "Column": df.columns,
-            "Data Type": df.dtypes.astype(str),
-            "Missing Values": df.isnull().sum(),
-            "Unique Values": df.nunique()
-        })
-        st.write("### Column Info")
-        st.dataframe(info_df)
+    with col2:
+        st.markdown("**Null Values:**")
+        st.write(df.isnull().sum())
 
-    # ------------------- Data Filtering -------------------
-    st.subheader("🔍 Data Filtering")
-    filter_cols = st.multiselect("Select columns to filter", df.columns)
-    filtered_df = df.copy()
-    for col in filter_cols:
-        if df[col].dtype in ['int64', 'float64']:
-            min_val, max_val = float(df[col].min()), float(df[col].max())
-            range_vals = st.slider(f"Filter {col}", min_val, max_val, (min_val, max_val))
-            filtered_df = filtered_df[(filtered_df[col] >= range_vals[0]) & (filtered_df[col] <= range_vals[1])]
-        else:
-            unique_vals = df[col].unique().tolist()
-            selected_vals = st.multiselect(f"Filter {col}", unique_vals, default=unique_vals)
-            filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
+    st.markdown("**Statistical Summary:**")
+    st.write(df.describe())
 
-    st.write("### Filtered Data Preview")
+    # ---------------------------
+    # 🔍 Sidebar Controls
+    # ---------------------------
+    st.sidebar.header("⚙️ Visualization Controls")
+    all_columns = df.columns.tolist()
+    
+    chart_type = st.sidebar.selectbox("Select Chart Type", 
+                                      ["Bar Chart", "Line Chart", "Scatter Plot", "Pie Chart", "Histogram", "Box Plot"])
+
+    x_axis = st.sidebar.selectbox("Select X-axis", all_columns)
+    y_axis = st.sidebar.selectbox("Select Y-axis", all_columns)
+    color_option = st.sidebar.selectbox("Color (optional)", [None] + all_columns)
+
+    # ---------------------------
+    # 📈 Generate Visualization
+    # ---------------------------
+    st.subheader("📈 Interactive Chart")
+
+    if chart_type == "Bar Chart":
+        fig = px.bar(df, x=x_axis, y=y_axis, color=color_option, title=f"{y_axis} vs {x_axis}")
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif chart_type == "Line Chart":
+        fig = px.line(df, x=x_axis, y=y_axis, color=color_option, title=f"{y_axis} vs {x_axis}")
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif chart_type == "Scatter Plot":
+        fig = px.scatter(df, x=x_axis, y=y_axis, color=color_option, size_max=10, title=f"{y_axis} vs {x_axis}")
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif chart_type == "Pie Chart":
+        fig = px.pie(df, names=x_axis, values=y_axis, color=color_option, title=f"{x_axis} Distribution")
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif chart_type == "Histogram":
+        fig = px.histogram(df, x=x_axis, color=color_option, title=f"Distribution of {x_axis}")
+        st.plotly_chart(fig, use_container_width=True)
+
+    elif chart_type == "Box Plot":
+        fig = px.box(df, x=x_axis, y=y_axis, color=color_option, title=f"Box Plot of {y_axis} by {x_axis}")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # ---------------------------
+    # 🔢 Data Filter Section
+    # ---------------------------
+    st.subheader("🔎 Filter Data")
+    selected_column = st.selectbox("Select column to filter", all_columns)
+    unique_values = df[selected_column].unique()
+
+    selected_value = st.selectbox("Select value", unique_values)
+    filtered_df = df[df[selected_column] == selected_value]
+
+    st.write(f"Filtered data where **{selected_column} = {selected_value}**")
     st.dataframe(filtered_df.head())
 
-    # ------------------- Descriptive Statistics -------------------
-    if show_summary:
-        st.subheader("📈 Descriptive Statistics")
-        st.write(filtered_df.describe(include='all').T)
-
-    # ------------------- Outlier Detection -------------------
-    if show_outliers:
-        st.subheader("⚠️ Outlier Detection")
-        numeric_cols = filtered_df.select_dtypes(include=['int64', 'float64']).columns
-        outlier_info = {}
-        for col in numeric_cols:
-            Q1 = filtered_df[col].quantile(0.25)
-            Q3 = filtered_df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            outliers = filtered_df[(filtered_df[col] < Q1 - 1.5*IQR) | (filtered_df[col] > Q3 + 1.5*IQR)]
-            outlier_info[col] = outliers.shape[0]
-        st.write(pd.DataFrame.from_dict(outlier_info, orient='index', columns=['Outliers Count']))
-
-    # ------------------- Automatic Insights -------------------
-    if show_insights:
-        st.subheader("💡 Automatic Insights")
-        for col in filtered_df.columns:
-            if filtered_df[col].dtype in ['int64', 'float64']:
-                st.write(f"Column **{col}**: Mean = {filtered_df[col].mean():.2f}, Median = {filtered_df[col].median():.2f}, Std = {filtered_df[col].std():.2f}")
-            else:
-                st.write(f"Column **{col}**: Top values = {filtered_df[col].value_counts().head(3).to_dict()}")
-
-    # ------------------- Visualizations -------------------
-    if show_visuals:
-        st.subheader("📊 Visualizations")
-        categorical_cols = filtered_df.select_dtypes(include=['object']).columns
-
-        if len(numeric_cols) > 0:
-            col_hist = st.selectbox("Select numeric column for histogram", numeric_cols)
-            fig_hist = px.histogram(filtered_df, x=col_hist, nbins=30, title=f"Distribution of {col_hist}")
-            st.plotly_chart(fig_hist, use_container_width=True)
-
-        if len(numeric_cols) >= 2:
-            x_axis = st.selectbox("Select X-axis for scatter plot", numeric_cols)
-            y_axis = st.selectbox("Select Y-axis for scatter plot", numeric_cols, index=1)
-            fig_scatter = px.scatter(filtered_df, x=x_axis, y=y_axis, title=f"{x_axis} vs {y_axis}")
-            st.plotly_chart(fig_scatter, use_container_width=True)
-
-        if len(categorical_cols) > 0 and len(numeric_cols) > 0:
-            cat_col = st.selectbox("Select categorical column for box plot", categorical_cols)
-            num_col = st.selectbox("Select numeric column for box plot", numeric_cols)
-            fig_box = px.box(filtered_df, x=cat_col, y=num_col, title=f"{num_col} by {cat_col}", color=cat_col)
-            st.plotly_chart(fig_box, use_container_width=True)
-
-    # ------------------- Correlation Heatmap -------------------
-    if show_correlation and len(numeric_cols) > 1:
-        st.subheader("🔗 Correlation Heatmap")
-        corr = filtered_df[numeric_cols].corr()
-        fig_corr = ff.create_annotated_heatmap(
-            z=corr.values,
-            x=list(corr.columns),
-            y=list(corr.index),
-            colorscale='Viridis',
-            showscale=True
-        )
-        st.plotly_chart(fig_corr, use_container_width=True)
-
-    # ------------------- Download Option -------------------
-    if show_download:
-        st.subheader("📥 Download Filtered Data")
-        csv = filtered_df.to_csv(index=False).encode('utf-8')
-        st.download_button("Download CSV", csv, file_name="filtered_data.csv", mime="text/csv")
-
 else:
-    st.sidebar.info("👆 Upload a CSV file to begin your analysis.")
+    st.info("👆 Please upload a CSV file to start analysis.")
